@@ -7,9 +7,17 @@ public class TraceUUIDsResponse extends ApiResponse {
 
     public String getOutput() {
         StringBuilder output = new StringBuilder();
-        for(String trace : traces) {
-            output.append(trace).append("\n");
+        
+        if(traces != null && traces.size() > 0) {
+            output.append("-- Trace UUIDs --\n");
+            for(String trace : traces) {
+                output.append(trace).append("\n");
+            }
         }
+        else {
+            output.append("No traces found.");
+        }
+        
         return output.toString();
     }
 }
