@@ -18,94 +18,103 @@ public class Main {
     private final static String API_BASE_URL = "https://ce.contrastsecurity.com/Contrast/api/";
 
     public static void main(String[] args) {
-        Options options = new Options();
-        options.addOption("h", "help", false, "This help text");
+        // Initialize and parse command line options
+        CliOptions options;
+        try {
+            options = new CliOptions(args);
+        } catch (ParseException exp) {
+            System.out.println("Unexpected exception: " + exp.getMessage());
+            return;
+        }
 
-        options.addOption("con", "config", true, "Configuration file path");
+        // Show help
+        if (options.isHelpEnabled()) {
+            options.showHelp();
+            return;
+        }
+        
+        // Get options
+        boolean debug = options.isDebugEnabled();
+        String configPath = options.getConfigPath();
+        String key = options.getApiKey();
+        String auth = options.getAuthToken();
+        String org = options.getOrganizationUuid();
 
-        options.addOption("key", "apikey", true, "API Key (overrides config file)");
-        options.addOption("auth", "authorization", true, "Authorization Header (overrides config file)");
-        options.addOption("org", "organization", true, "Organization ID (overrides config file)");
+        if (configPath != null && configPath.length() > 0) {
+            Configuration config = Configuration.initializeConfiguration(configPath);
+            if (config != null) {
+                // The manually set command line options take priority over the config file so only populate these if they are not overridden
+                if (key == null || key.length() == 0) {
+                    key = config.getApiKey();
+                }
+                if (auth == null || auth.length() == 0) {
+                    auth = config.getAuthorization();
+                }
+                if (org == null || org.length() == 0) {
+                    org = config.getOrganizationId();
+                }
+            }
+        }
 
-        options.addOption("tid", "traceid", true, "Trace UUID");
-        options.addOption("aid", "applicationid", true, "Application UUID");
+        String aid = options.getApplicationUuid();
+        String tid = options.getTraceUuid();
+
+        StringBuilder url;
+        Class<? extends ApiResponse> responseClass; // Use generics to support several different API Responses
+
+        if (aid != null) {
+            if (tid != null) {
+                // Get a single trace
+                url = new StringBuilder(API_BASE_URL).append("ng/").append(org).append("/traces/").append(aid).append("/trace/").append(tid);
+                responseClass = TraceResponse.class;
+            }
+            else {
+                // Get a list of traces
+                url = new StringBuilder(API_BASE_URL).append("ng/").append(org).append("/traces/").append(aid).append("/ids/");
+                responseClass = TraceUUIDsResponse.class;
+            }
+        }
+        else {
+            // Get a list of applications
+            url = new StringBuilder(API_BASE_URL).append("ng/").append(org).append("/applications/");
+            responseClass = ApplicationsResponse.class;
+        }
 
         try {
-            CommandLine line = new DefaultParser().parse(options, args);
-
-            if (line.hasOption("h")) {
-                // automatically generate the help statement
-                HelpFormatter formatter = new HelpFormatter();
-                formatter.printHelp("Vulnerabilities CLI - Used see your vulnerability details", options);
-                return;
-            }
-
-            String configPath = line.getOptionValue("con");
-
-            String key = line.getOptionValue("key");
-            String auth = line.getOptionValue("auth");
-            String org = line.getOptionValue("org");
-
-            if (configPath != null && configPath.length() > 0) {
-                Configuration config = Configuration.initializeConfiguration(configPath);
-                if (config != null) {
-                    // The manually set command line options take priority over the config file so only populate these if they are not overridden
-                    if (key == null || key.length() == 0) {
-                        key = config.getApiKey();
-                    }
-                    if (auth == null || auth.length() == 0) {
-                        auth = config.getAuthorization();
-                    }
-                    if (org == null || org.length() == 0) {
-                        org = config.getOrganizationId();
-                    }
-                }
-            }
-
-            String aid = line.getOptionValue("aid");
-            String tid = line.getOptionValue("tid");
-
-            StringBuilder url;
-            Class<? extends ApiResponse> responseClass; // Use generics to support several different API Responses
-
-            if (aid != null) {
-                if (tid != null) {
-                    // Get a single trace
-                    url = new StringBuilder(API_BASE_URL).append("ng/").append(org).append("/traces/").append(aid).append("/trace/").append(tid);
-                    responseClass = TraceResponse.class;
-                } else {
-                    // Get a list of traces
-                    url = new StringBuilder(API_BASE_URL).append("ng/").append(org).append("/traces/").append(aid).append("/ids/");
-                    responseClass = TraceUUIDsResponse.class;
-                }
-            } else {
-                // Get a list of applications
-                url = new StringBuilder(API_BASE_URL).append("ng/").append(org).append("/applications/");
-                responseClass = ApplicationsResponse.class;
-            }
-
-            try {
+            if (debug) {
                 System.out.println("Requesting resource: " + url.toString());
+            }
 
-                Response response = Request.Get(url.toString())
-                        .addHeader("Authorization", auth)
-                        .addHeader("API-Key", key)
-                        .addHeader("Accept", "application/json")
-                        .execute();
+            Response response = Request.Get(url.toString())
+                    .addHeader("Authorization", auth)
+                    .addHeader("API-Key", key)
+                    .addHeader("Accept", "application/json")
+                    .execute();
 
-                Content content = response.returnContent(); // TODO: Switch this to use "responseHandler" to avoid putting buffer content in memory
+            Content content = response.returnContent(); // TODO: Switch this to use "responseHandler" to avoid putting buffer content in memory
 
-                if (content != null) {
+            if (content != null) {
+                if (debug) {
                     System.out.println(content.toString());
+                }
 
-                    ApiResponse apiResponse = new Gson().fromJson(content.toString(), responseClass);
+                ApiResponse apiResponse = new Gson().fromJson(content.toString(), responseClass);
+                
+                if (apiResponse == null || !apiResponse.success) {
+                    // Handle API Errors
+                    System.out.println("--- An API error occurred ---");
+                    if (apiResponse != null && apiResponse.messages != null) {
+                        for (String message : apiResponse.messages) {
+                            System.out.println(message);
+                        }
+                    }
+                }
+                else {
                     System.out.println(apiResponse.getOutput());
                 }
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
             }
-        } catch (ParseException exp) {
-            System.out.println("Unexpected exception:" + exp.getMessage());
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
         }
     }
 }
