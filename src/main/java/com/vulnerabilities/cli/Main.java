@@ -15,7 +15,7 @@ import java.io.IOException;
 
 public class Main {
 
-    private final static String API_BASE_URL = "https://ce.contrastsecurity.com/Contrast/api/";
+    private final static String API_BASE_URL = "https://ce.contrastsecurity.com/Contrast/api/ng/";
 
     public static void main(String[] args) {
         // Initialize and parse command line options
@@ -36,6 +36,7 @@ public class Main {
         // Get options
         boolean debug = options.isDebugEnabled();
         String configPath = options.getConfigPath();
+        String baseApiUrl = API_BASE_URL;
         String key = options.getApiKey();
         String auth = options.getAuthToken();
         String org = options.getOrganizationUuid();
@@ -53,9 +54,27 @@ public class Main {
                 if (org == null || org.length() == 0) {
                     org = config.getOrganizationId();
                 }
+                
+                if(config.getBaseApiUrl() != null && config.getBaseApiUrl().length() > 0) {
+                    baseApiUrl = config.getBaseApiUrl();
+                }
             }
         }
-
+        
+        // Validation of required options
+        if(key == null || key.length() == 0) {
+            System.out.println("Please supply an API Key using the -key option or through the configuration file.");
+            return;
+        }
+        if(auth == null || auth.length() == 0) {
+            System.out.println("Please supply an Authorization Token using the -auth option or through the configuration file.");
+            return;
+        }
+        if(org == null || org.length() == 0) {
+            System.out.println("Please supply an organization ID using the -org option or through the configuration file.");
+            return;
+        }
+        
         String aid = options.getApplicationUuid();
         String tid = options.getTraceUuid();
 
@@ -65,18 +84,21 @@ public class Main {
         if (aid != null) {
             if (tid != null) {
                 // Get a single trace
-                url = new StringBuilder(API_BASE_URL).append("ng/").append(org).append("/traces/").append(aid).append("/trace/").append(tid);
+                System.out.println("Getting trace details...\n");
+                url = new StringBuilder(baseApiUrl).append(org).append("/traces/").append(aid).append("/trace/").append(tid);
                 responseClass = TraceResponse.class;
             }
             else {
                 // Get a list of traces
-                url = new StringBuilder(API_BASE_URL).append("ng/").append(org).append("/traces/").append(aid).append("/ids/");
+                System.out.println("Getting a list of traces for application (" + aid + ")...\n");
+                url = new StringBuilder(baseApiUrl).append(org).append("/traces/").append(aid).append("/ids/");
                 responseClass = TraceUUIDsResponse.class;
             }
         }
         else {
             // Get a list of applications
-            url = new StringBuilder(API_BASE_URL).append("ng/").append(org).append("/applications/");
+            System.out.println("Getting a list of applications...\n");
+            url = new StringBuilder(baseApiUrl).append(org).append("/applications/");
             responseClass = ApplicationsResponse.class;
         }
 

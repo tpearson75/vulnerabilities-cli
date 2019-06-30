@@ -8,9 +8,18 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 public final class Configuration {
+    private String baseApiUrl;
     private String apiKey;
     private String authorization;
     private String organizationId;
+    
+    public String getBaseApiUrl() {
+        return baseApiUrl;
+    }
+
+    public void setBaseApiUrl(String baseApiUrl) {
+        this.baseApiUrl = baseApiUrl;
+    }
 
     public String getApiKey() {
         return apiKey;

@@ -24,7 +24,7 @@ class CliOptions {
         options.addOption(ORGANIZATION_UUID, "organization", true, "Organization ID (overrides config file)");
         options.addOption(TRACE_UUID, "traceid", true, "Trace UUID");
         options.addOption(APPLICATION_UUID, "applicationid", true, "Application UUID");
-        options.addOption(DEBUG, "debug", false, "Show the debug output");
+        options.addOption(DEBUG, "debug", false, "Show additional debug information");
 
         this.parseArgs(args);
     }
@@ -36,7 +36,7 @@ class CliOptions {
     void showHelp() {
         // automatically generate the help statement
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp("Vulnerabilities CLI - Used see your vulnerability details", options);
+        formatter.printHelp("java -jar cli.jar [-options]\nwhere options include:", options);
     }
     
     boolean isHelpEnabled() {

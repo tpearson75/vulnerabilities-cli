@@ -1,3 +1,4 @@
+baseApiUrl: "https://ce.contrastsecurity.com/Contrast/api/ng/"
 apiKey: <api key>
 authorization: <auth token>
 organizationId: <organization uuid>
