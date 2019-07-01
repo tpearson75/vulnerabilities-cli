@@ -1,17 +1,16 @@
 package com.vulnerabilities.cli;
 
-import com.google.gson.Gson;
+import com.google.gson.*;
 import com.vulnerabilities.cli.config.Configuration;
-import com.vulnerabilities.cli.models.ApiResponse;
-import com.vulnerabilities.cli.models.ApplicationsResponse;
-import com.vulnerabilities.cli.models.TraceResponse;
-import com.vulnerabilities.cli.models.TraceUUIDsResponse;
+import com.vulnerabilities.cli.models.*;
 import org.apache.commons.cli.*;
 import org.apache.http.client.fluent.Content;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.client.fluent.Response;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
+import java.util.Date;
 
 public class Main {
 
@@ -90,16 +89,22 @@ public class Main {
             }
             else {
                 // Get a list of traces
-                System.out.println("Getting a list of traces for application (" + aid + ")...\n");
+                System.out.println("No trace ID was supplied, getting application traces...\n");
                 url = new StringBuilder(baseApiUrl).append(org).append("/traces/").append(aid).append("/ids/");
                 responseClass = TraceUUIDsResponse.class;
             }
         }
+        else if (tid != null) {
+            // Get a single trace from the organization endpoint
+            System.out.println("Getting trace summary...\n");
+            url = new StringBuilder(baseApiUrl).append(org).append("/orgtraces/").append(tid).append("/short");
+            responseClass = TraceShortResponse.class;
+        }
         else {
             // Get a list of applications
-            System.out.println("Getting a list of applications...\n");
-            url = new StringBuilder(baseApiUrl).append(org).append("/applications/");
-            responseClass = ApplicationsResponse.class;
+            System.out.println("No trace ID was supplied, getting organization traces...\n");
+            url = new StringBuilder(baseApiUrl).append(org).append("/orgtraces/ids");
+            responseClass = TraceUUIDsResponse.class;
         }
 
         try {
@@ -120,7 +125,7 @@ public class Main {
                     System.out.println(content.toString());
                 }
 
-                ApiResponse apiResponse = new Gson().fromJson(content.toString(), responseClass);
+                ApiResponse apiResponse = getGson().fromJson(content.toString(), responseClass);
                 
                 if (apiResponse == null || !apiResponse.success) {
                     // Handle API Errors
@@ -138,5 +143,18 @@ public class Main {
         } catch (IOException e) {
             System.out.println(e.getMessage());
         }
+    }
+
+    private static Gson getGson() {
+        GsonBuilder builder = new GsonBuilder();
+
+        // Register an adapter to manage the date types as long values
+        builder.registerTypeAdapter(Date.class, new JsonDeserializer<Date>() {
+            public Date deserialize (JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+                return new Date(json.getAsJsonPrimitive().getAsLong());
+            }
+        });
+
+        return builder.create();
     }
 }
